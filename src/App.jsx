@@ -382,9 +382,37 @@ function MarketsPage(props) {
   );
 }
 
+function PieChart(props) {
+  var data = props.data;
+  var size = props.size || 180;
+  var cx = size / 2; var cy = size / 2; var r = size / 2 - 10;
+  var total = data.reduce(function(s, d) { return s + d.value; }, 0);
+  if (total === 0) return null;
+  var slices = [];
+  var angle = -Math.PI / 2;
+  data.forEach(function(d, i) {
+    var sweep = (d.value / total) * 2 * Math.PI;
+    var x1 = cx + r * Math.cos(angle);
+    var y1 = cy + r * Math.sin(angle);
+    var x2 = cx + r * Math.cos(angle + sweep);
+    var y2 = cy + r * Math.sin(angle + sweep);
+    var large = sweep > Math.PI ? 1 : 0;
+    var path = "M " + cx + " " + cy + " L " + x1 + " " + y1 + " A " + r + " " + r + " 0 " + large + " 1 " + x2 + " " + y2 + " Z";
+    slices.push(<path key={i} d={path} fill={d.color} opacity={0.9} stroke={C.bg} strokeWidth={2} />);
+    angle += sweep;
+  });
+  return (
+    <svg width={size} height={size}>
+      {slices}
+      <circle cx={cx} cy={cy} r={r * 0.52} fill={C.bgCard} />
+    </svg>
+  );
+}
+
 function PortfolioPage(props) {
   var user = props.user;
   var investments = user.investments || [];
+
   if (!investments.length) return (
     <div style={{ textAlign: "center", padding: "80px 0", color: C.textMuted }}>
       <div style={{ fontSize: 48, marginBottom: 16 }}>📭</div>
@@ -392,35 +420,134 @@ function PortfolioPage(props) {
       <div style={{ fontSize: 14, marginTop: 8 }}>Faites votre premier investissement</div>
     </div>
   );
+
+  // Calculer les données par métal
+  var byMetal = {};
+  investments.forEach(function(inv) {
+    var m = METALS[inv.metal];
+    if (!byMetal[inv.metal]) byMetal[inv.metal] = { amount: 0, gain: 0, value: 0, count: 0, metal: inv.metal };
+    var ageYears = (Date.now() - new Date(inv.invested_at)) / (365 * 86400000);
+    var gain = Number(inv.amount) * m.returnRate * ageYears;
+    byMetal[inv.metal].amount += Number(inv.amount);
+    byMetal[inv.metal].gain += gain;
+    byMetal[inv.metal].value += Number(inv.amount) + gain;
+    byMetal[inv.metal].count += 1;
+  });
+
+  var totalInvested = Object.values(byMetal).reduce(function(s, d) { return s + d.amount; }, 0);
+  var totalValue = Object.values(byMetal).reduce(function(s, d) { return s + d.value; }, 0);
+  var totalGain = totalValue - totalInvested;
+  var totalPct = totalInvested > 0 ? (totalGain / totalInvested * 100).toFixed(2) : "0.00";
+
+  var pieData = Object.values(byMetal).map(function(d) {
+    return { value: d.value, color: METALS[d.metal].color, label: METALS[d.metal].name };
+  });
+
   return (
     <div>
       <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Mon Portefeuille</h1>
-      <p style={{ color: C.textMuted, fontSize: 14, marginBottom: 28 }}>Vos positions actives</p>
-      {investments.map(function(inv, i) {
-        var m = METALS[inv.metal];
-        var ageYears = (Date.now() - new Date(inv.invested_at)) / (365 * 86400000);
-        var gain = Number(inv.amount) * m.returnRate * ageYears;
-        var value = Number(inv.amount) + gain;
-        var pct = (gain / Number(inv.amount) * 100).toFixed(2);
-        return (
-          <div key={i} style={{ background: C.bgCard, border: "1px solid " + C.border, borderRadius: 12, padding: 22, marginBottom: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-              <span style={{ fontSize: 28, color: m.color }}>{m.icon}</span>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 17 }}>{m.name}</div>
-                <div style={{ color: C.textMuted, fontSize: 12 }}>Depuis le {inv.invested_at} - {Number(inv.shares).toFixed(4)} parts</div>
-              </div>
-              <div style={{ marginLeft: "auto", textAlign: "right" }}>
-                <div style={{ fontSize: 20, fontWeight: 900, color: m.color }}>{fmtXAF(Math.round(value))}</div>
-                <div style={{ fontSize: 12, color: C.green }}>+{fmtXAF(Math.round(gain))} (+{pct}%)</div>
-              </div>
+      <p style={{ color: C.textMuted, fontSize: 14, marginBottom: 24 }}>Vos positions actives et performances</p>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 24 }}>
+        {[
+          { label: "Capital investi", value: fmtXAF(totalInvested), icon: "💼", color: C.zinc },
+          { label: "Valeur actuelle", value: fmtXAF(Math.round(totalValue)), icon: "📈", color: C.copper },
+          { label: "Gains cumules", value: "+" + fmtXAF(Math.round(totalGain)) + " (+" + totalPct + "%)", icon: "🏆", color: C.green },
+        ].map(function(kpi) {
+          return (
+            <div key={kpi.label} style={{ background: C.bgCard, border: "1px solid " + kpi.color + "44", borderRadius: 12, padding: "18px 20px" }}>
+              <div style={{ fontSize: 22, marginBottom: 8 }}>{kpi.icon}</div>
+              <div style={{ color: kpi.color, fontWeight: 900, fontSize: 17, marginBottom: 4 }}>{kpi.value}</div>
+              <div style={{ color: C.textMuted, fontSize: 12 }}>{kpi.label}</div>
             </div>
-            <div style={{ background: C.bgPanel, borderRadius: 4, height: 6, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: Math.min(100, parseFloat(pct) * 3) + "%", background: "linear-gradient(90deg," + m.color + "," + m.colorLight + ")", borderRadius: 4 }} />
-            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 20, marginBottom: 24 }}>
+        <div style={{ background: C.bgCard, border: "1px solid " + C.border, borderRadius: 12, padding: 24, display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 16, color: C.textMuted, letterSpacing: 1 }}>REPARTITION</div>
+          <PieChart data={pieData} size={160} />
+          <div style={{ marginTop: 20, width: "100%" }}>
+            {Object.values(byMetal).map(function(d) {
+              var m = METALS[d.metal];
+              var pct = totalValue > 0 ? (d.value / totalValue * 100).toFixed(1) : "0";
+              return (
+                <div key={d.metal} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <div style={{ width: 12, height: 12, borderRadius: "50%", background: m.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{m.name}</span>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: m.color }}>{pct}%</span>
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
+        </div>
+
+        <div>
+          {Object.values(byMetal).map(function(d) {
+            var m = METALS[d.metal];
+            var pct = d.amount > 0 ? (d.gain / d.amount * 100).toFixed(2) : "0.00";
+            var share = totalValue > 0 ? (d.value / totalValue * 100).toFixed(1) : "0";
+            return (
+              <div key={d.metal} style={{ background: C.bgCard, border: "1px solid " + C.border, borderRadius: 12, padding: 20, marginBottom: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                  <span style={{ fontSize: 30, color: m.color }}>{m.icon}</span>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 17 }}>{m.name}</div>
+                    <div style={{ color: C.textMuted, fontSize: 12 }}>{d.count} position(s) - {share}% du portefeuille</div>
+                  </div>
+                  <div style={{ marginLeft: "auto", textAlign: "right" }}>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: m.color }}>{fmtXAF(Math.round(d.value))}</div>
+                    <div style={{ fontSize: 12, color: C.green }}>+{fmtXAF(Math.round(d.gain))} (+{pct}%)</div>
+                  </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
+                  {[
+                    { label: "Investi", value: fmtXAF(d.amount) },
+                    { label: "Gain", value: "+" + fmtXAF(Math.round(d.gain)), color: C.green },
+                    { label: "Rendement", value: "+" + pct + "%", color: C.green },
+                  ].map(function(s) {
+                    return (
+                      <div key={s.label} style={{ background: C.bgPanel, borderRadius: 8, padding: "10px 12px" }}>
+                        <div style={{ color: C.textDim, fontSize: 11, marginBottom: 3 }}>{s.label}</div>
+                        <div style={{ fontWeight: 800, fontSize: 13, color: s.color || C.text }}>{s.value}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ background: C.bgPanel, borderRadius: 4, height: 6, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: Math.min(100, parseFloat(pct) * 3) + "%", background: "linear-gradient(90deg," + m.color + "," + m.colorLight + ")", borderRadius: 4 }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{ background: C.bgCard, border: "1px solid " + C.border, borderRadius: 12, padding: 20 }}>
+        <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 16, color: C.textMuted }}>DETAIL DES POSITIONS</div>
+        {investments.map(function(inv, i) {
+          var m = METALS[inv.metal];
+          var ageYears = (Date.now() - new Date(inv.invested_at)) / (365 * 86400000);
+          var gain = Number(inv.amount) * m.returnRate * ageYears;
+          var value = Number(inv.amount) + gain;
+          var pct = (gain / Number(inv.amount) * 100).toFixed(2);
+          var ageDays = Math.floor(ageYears * 365);
+          return (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: i < investments.length - 1 ? "1px solid " + C.border : "none" }}>
+              <span style={{ fontSize: 22, color: m.color }}>{m.icon}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{m.name}</div>
+                <div style={{ color: C.textMuted, fontSize: 11 }}>Depuis le {inv.invested_at} ({ageDays} jours) - {Number(inv.shares).toFixed(4)} parts</div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontWeight: 800, color: m.color }}>{fmtXAF(Math.round(value))}</div>
+                <div style={{ fontSize: 11, color: C.green }}>+{fmtXAF(Math.round(gain))} (+{pct}%)</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -854,5 +981,14 @@ export default function App() {
   );
 
   if (!user) return <AuthPage onLogin={setUser} />;
-  return <Dashboard user={user} setUser={setUser} prices={prices} cryptoPrices={cryptoPrices} histories={histories} onLogout={handleLogout} />;
+  return (
+    <div>
+      <Dashboard user={user} setUser={setUser} prices={prices} cryptoPrices={cryptoPrices} histories={histories} onLogout={handleLogout} />
+      <a href="https://wa.me/242067340901" target="_blank" rel="noreferrer"
+        style={{ position: "fixed", bottom: 28, right: 28, width: 56, height: 56, borderRadius: "50%", background: "#25D366", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px #25D36666", zIndex: 9999, textDecoration: "none", fontSize: 28 }}
+        title="Support WhatsApp">
+        💬
+      </a>
+    </div>
+  );
 }
