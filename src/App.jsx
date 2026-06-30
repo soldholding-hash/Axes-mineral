@@ -55,21 +55,21 @@ function MiniChart(props) {
 
 function TickerBar(props) {
   var prices = props.prices;
-  var cryptoPrices = props.cryptoPrices;
   var text = [
-    "Cu — $" + fmt(prices.copper) + "/t",
-    "Zn — $" + fmt(prices.zinc) + "/t",
-    "Pb — $" + fmt(prices.lead) + "/t",
-    "BTC — $" + fmt(cryptoPrices.BTC),
-    "ETH — $" + fmt(cryptoPrices.ETH),
-    "USDT — $1.00",
+    "Cuivre — " + fmt(prices.copper) + " XAF/t",
+    "Zinc — " + fmt(prices.zinc) + " XAF/t",
+    "Plomb — " + fmt(prices.lead) + " XAF/t",
+    "Axes Productivite — Boko Songho, Congo",
+    "Cuivre — " + fmt(prices.copper) + " XAF/t",
+    "Zinc — " + fmt(prices.zinc) + " XAF/t",
+    "Plomb — " + fmt(prices.lead) + " XAF/t",
   ].join("    ·    ");
   var full = text + "    ·    " + text;
   return (
     <div style={{ background: "#0D0D16", borderBottom: "1px solid " + C.border, overflow: "hidden", height: 32, display: "flex", alignItems: "center" }}>
-      <div style={{ color: C.copper, fontSize: 11, fontWeight: 700, padding: "0 16px", whiteSpace: "nowrap", letterSpacing: 1 }}>MARCHES</div>
+      <div style={{ color: C.copper, fontSize: 11, fontWeight: 700, padding: "0 16px", whiteSpace: "nowrap", letterSpacing: 1 }}>AXES PRIX</div>
       <div style={{ flex: 1, overflow: "hidden" }}>
-        <div style={{ display: "inline-block", whiteSpace: "nowrap", color: C.textMuted, fontSize: 11, fontFamily: "monospace", animation: "ticker 28s linear infinite" }}>{full}</div>
+        <div style={{ display: "inline-block", whiteSpace: "nowrap", color: C.textMuted, fontSize: 11, fontFamily: "monospace", animation: "ticker 32s linear infinite" }}>{full}</div>
       </div>
       <style>{"@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}"}</style>
     </div>
@@ -252,14 +252,14 @@ function Dashboard(props) {
       </div>
 
       <div style={{ marginLeft: 220, flex: 1, display: "flex", flexDirection: "column" }}>
-        <TickerBar prices={prices} cryptoPrices={cryptoPrices} />
+        <TickerBar prices={prices} />
         <div style={{ flex: 1, padding: "28px 32px", maxWidth: 1100 }}>
           {page === "home"      && <HomePage user={user} prices={prices} cryptoPrices={cryptoPrices} histories={histories} totalInvested={totalInvested} totalValue={totalValue} totalGain={totalGain} onInvest={function() { setPage("invest"); }} />}
           {page === "markets"   && <MarketsPage prices={prices} histories={histories} />}
           {page === "portfolio" && <PortfolioPage user={user} />}
           {page === "invest"    && <InvestPage user={user} setUser={setUser} prices={prices} />}
           {page === "wallet"    && <WalletPage user={user} setUser={setUser} cryptoPrices={cryptoPrices} />}
-          {page === "admin"     && user.role === "admin" && <AdminPage allUsers={allUsers} setAllUsers={setAllUsers} setPendingCount={setPendingCount} adminId={user.id} />}
+          {page === "admin"     && user.role === "admin" && <AdminPage allUsers={allUsers} setAllUsers={setAllUsers} setPendingCount={setPendingCount} adminId={user.id} setPrices={setPrices} />}
         </div>
       </div>
     </div>
@@ -337,33 +337,31 @@ function MarketsPage(props) {
   var histories = props.histories;
   return (
     <div>
-      <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Marches des Metaux</h1>
-      <p style={{ color: C.textMuted, fontSize: 14, marginBottom: 28 }}>Prix en temps reel - LME</p>
+      <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Nos Prix de Vente</h1>
+      <p style={{ color: C.textMuted, fontSize: 14, marginBottom: 28 }}>Prix fixes par Axes Productivite - XAF / tonne</p>
       {Object.entries(METALS).map(function(entry) {
         var k = entry[0]; var m = entry[1];
         var hist = histories[k] || [];
         var curr = prices[k] || m.basePrice;
-        var prev7 = hist.length > 7 ? hist[hist.length - 8].price : curr;
-        var prev30 = hist.length > 0 ? hist[0].price : curr;
         return (
           <div key={k} style={{ background: C.bgCard, border: "1px solid " + C.border, borderRadius: 12, padding: 24, marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
               <span style={{ fontSize: 32, color: m.color }}>{m.icon}</span>
               <div>
                 <div style={{ fontSize: 20, fontWeight: 900 }}>{m.name} <span style={{ color: C.textDim, fontSize: 13 }}>/ {m.symbol}</span></div>
-                <div style={{ color: C.textMuted, fontSize: 13 }}>USD / tonne metrique</div>
+                <div style={{ color: C.textMuted, fontSize: 13 }}>Prix de vente - XAF / tonne</div>
               </div>
               <div style={{ marginLeft: "auto" }}>
-                <div style={{ fontSize: 28, fontWeight: 900, color: m.color }}>{fmtUSD(curr)}</div>
+                <div style={{ fontSize: 28, fontWeight: 900, color: m.color }}>{fmtXAF(curr)}</div>
+                <div style={{ fontSize: 12, color: C.textMuted, textAlign: "right" }}>par tonne</div>
               </div>
             </div>
             <div style={{ background: C.bgPanel, borderRadius: 8, padding: "12px 16px", marginBottom: 16 }}>
               <MiniChart data={hist} color={m.color} width={700} height={60} />
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
               {[
-                { label: "7 jours", value: ((curr - prev7) / prev7 * 100).toFixed(2) + "%" },
-                { label: "30 jours", value: ((curr - prev30) / prev30 * 100).toFixed(2) + "%" },
+                { label: "Prix / kg", value: fmtXAF(curr / 1000) },
                 { label: "Rendement annuel", value: "+" + (m.returnRate * 100).toFixed(1) + "%" },
                 { label: "Investissement min.", value: fmtXAF(m.minInvest) },
               ].map(function(s) {
@@ -681,6 +679,7 @@ function AdminPage(props) {
   var setAllUsers = props.setAllUsers;
   var setPendingCount = props.setPendingCount;
   var adminId = props.adminId;
+  var setPrices = props.setPrices;
   var [tab, setTab] = useState("pending");
   var [rechargeUser, setRechargeUser] = useState(null);
   var [rechargeAmount, setRechargeAmount] = useState("");
@@ -691,6 +690,35 @@ function AdminPage(props) {
   var [search, setSearch] = useState("");
   var [rechargeHistory, setRechargeHistory] = useState([]);
   var [histLoading, setHistLoading] = useState(false);
+  var [editPrices, setEditPrices] = useState({ copper: "", zinc: "", lead: "" });
+  var [priceLoading, setPriceLoading] = useState(false);
+  var [priceMsg, setPriceMsg] = useState("");
+
+  useEffect(function() {
+    supabase.from("metal_prices").select("*").then(function(r) {
+      if (r.data) {
+        var obj = {};
+        r.data.forEach(function(row) { obj[row.metal] = row.price_xaf; });
+        setEditPrices({ copper: obj.copper || "", zinc: obj.zinc || "", lead: obj.lead || "" });
+      }
+    });
+  }, []);
+
+  var savePrices = async function() {
+    setPriceLoading(true); setPriceMsg("");
+    try {
+      var updates = [
+        { metal: "copper", price_xaf: parseFloat(editPrices.copper), updated_at: new Date().toISOString() },
+        { metal: "zinc",   price_xaf: parseFloat(editPrices.zinc),   updated_at: new Date().toISOString() },
+        { metal: "lead",   price_xaf: parseFloat(editPrices.lead),   updated_at: new Date().toISOString() },
+      ];
+      for (var i = 0; i < updates.length; i++) {
+        await supabase.from("metal_prices").upsert(updates[i], { onConflict: "metal" });
+      }
+      setPrices({ copper: parseFloat(editPrices.copper), zinc: parseFloat(editPrices.zinc), lead: parseFloat(editPrices.lead) });
+      setPriceMsg("Prix mis a jour avec succes !");
+    } finally { setPriceLoading(false); }
+  };
 
   var pending  = allUsers.filter(function(u) { return u.status === "pending"; });
   var approved = allUsers.filter(function(u) { return u.status === "approved" && u.role !== "admin"; });
@@ -757,6 +785,7 @@ function AdminPage(props) {
     ["pending", "⏳ En attente", pending.length],
     ["approved", "✅ Approuves", approved.length],
     ["recharges", "💰 Recharges", null],
+    ["prix", "📊 Prix", null],
     ["rejected", "❌ Refuses", rejected.length],
   ];
 
@@ -920,6 +949,43 @@ function AdminPage(props) {
         </div>
       )}
 
+      {tab === "prix" && (
+        <div style={{ maxWidth: 560 }}>
+          <div style={{ background: C.bgCard, border: "1px solid " + C.border, borderRadius: 12, padding: 28 }}>
+            <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 6, color: C.copper }}>📊 Fixer vos prix de vente</div>
+            <div style={{ color: C.textMuted, fontSize: 13, marginBottom: 24 }}>Ces prix s'affichent aux investisseurs et servent au calcul de rendement.</div>
+            {[
+              { key: "copper", label: "Cuivre (Cu)", icon: "⬡", color: C.copper },
+              { key: "zinc",   label: "Zinc (Zn)",   icon: "◈", color: C.zinc },
+              { key: "lead",   label: "Plomb (Pb)",  icon: "◆", color: C.lead },
+            ].map(function(item) {
+              return (
+                <div key={item.key} style={{ marginBottom: 20 }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, color: item.color, fontSize: 14, fontWeight: 700, marginBottom: 8 }}>
+                    <span style={{ fontSize: 20 }}>{item.icon}</span> {item.label}
+                  </label>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <input type="number" value={editPrices[item.key]} onChange={function(k) { return function(e) { setEditPrices(function(p) { var n = Object.assign({}, p); n[k] = e.target.value; return n; }); }; }(item.key)}
+                      style={{ flex: 1, padding: "12px 14px", background: C.bgPanel, border: "1px solid " + C.border, borderRadius: 8, color: C.text, fontSize: 16, fontWeight: 700, outline: "none" }} />
+                    <div style={{ color: C.textMuted, fontSize: 13, whiteSpace: "nowrap" }}>XAF / tonne</div>
+                  </div>
+                  {editPrices[item.key] && (
+                    <div style={{ fontSize: 12, color: C.textDim, marginTop: 4 }}>
+                      = {fmtXAF(parseFloat(editPrices[item.key]) / 1000)} / kg
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {priceMsg && <div style={{ background: "#0A2A10", border: "1px solid " + C.green, borderRadius: 8, padding: "10px 14px", color: C.green, fontSize: 13, marginBottom: 16 }}>{priceMsg}</div>}
+            <button onClick={savePrices} disabled={priceLoading}
+              style={{ width: "100%", padding: "14px 0", background: "linear-gradient(135deg," + C.copper + "," + C.copperLight + ")", border: "none", borderRadius: 10, color: "#fff", fontWeight: 800, fontSize: 15, cursor: priceLoading ? "wait" : "pointer" }}>
+              {priceLoading ? "Mise a jour..." : "✓ Enregistrer les prix"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {tab === "rejected" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {rejected.length === 0 && <div style={{ textAlign: "center", padding: "48px 0", color: C.textDim }}>Aucun compte refuse</div>}
@@ -944,11 +1010,20 @@ function AdminPage(props) {
 export default function App() {
   var [user, setUser] = useState(null);
   var [loading, setLoading] = useState(true);
-  var [prices, setPrices] = useState({ copper: 9420, zinc: 2680, lead: 2120 });
+  var [prices, setPrices] = useState({ copper: 5500000, zinc: 1600000, lead: 1250000 });
   var [cryptoPrices, setCryptoPrices] = useState(CRYPTO_BASE);
   var [histories] = useState(function() { return Object.fromEntries(Object.entries(METALS).map(function(entry) { return [entry[0], genPriceHistory(entry[1].basePrice, entry[1].volatility)]; })); });
 
   useEffect(function() {
+    // Charger les prix depuis Supabase
+    supabase.from("metal_prices").select("*").then(function(r) {
+      if (r.data && r.data.length > 0) {
+        var obj = {};
+        r.data.forEach(function(row) { obj[row.metal] = row.price_xaf; });
+        setPrices({ copper: obj.copper || 5500000, zinc: obj.zinc || 1600000, lead: obj.lead || 1250000 });
+      }
+    });
+
     supabase.auth.getSession().then(async function(res) {
       var session = res.data.session;
       if (session) {
@@ -964,9 +1039,8 @@ export default function App() {
       setLoading(false);
     });
 
-    var id1 = setInterval(function() { setPrices(function(p) { return { copper: Math.round(p.copper * (1 + (Math.random() - 0.49) * 0.004)), zinc: Math.round(p.zinc * (1 + (Math.random() - 0.49) * 0.005)), lead: Math.round(p.lead * (1 + (Math.random() - 0.49) * 0.004)) }; }); }, 3500);
     var id2 = setInterval(function() { setCryptoPrices(function(p) { return { BTC: Math.round(p.BTC * (1 + (Math.random() - 0.49) * 0.008)), ETH: Math.round(p.ETH * (1 + (Math.random() - 0.49) * 0.010)), USDT: 1 }; }); }, 4000);
-    return function() { clearInterval(id1); clearInterval(id2); };
+    return function() { clearInterval(id2); };
   }, []);
 
   var handleLogout = async function() { await supabase.auth.signOut(); setUser(null); };
